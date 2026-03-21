@@ -15896,81 +15896,6 @@ ${linkedInfoStr}
     window.addEventListener('resize', () => {
         if(document.getElementById('view-main-moments').style.display !== 'none') initSnow();
     });
-
-    // ================= 沉浸式引擎：AI 后台围观并评论你的朋友圈 =================
-    function mTriggerAIAfterUserPost(post) {
-        if(!gConfig.apiUrl || !gConfig.apiKey) return;
-        if(!contacts || contacts.length === 0) return;
-
-        // 获取我允许联动的联系人名单（如果没有设置专属联动，默认随机抓取所有 AI）
-        let linkedIds = momentsData.linkedContacts || [];
-        let availableAIs = contacts.filter(c => linkedIds.includes(c.id) || linkedIds.length === 0);
-        if(availableAIs.length === 0) return;
-
-        // 随机选 1 到 2 个 AI 来给你评论，不会显得太假
-        let commentersCount = Math.floor(Math.random() * 2) + 1;
-        let shuffledAIs = availableAIs.sort(() => 0.5 - Math.random()).slice(0, commentersCount);
-
-        shuffledAIs.forEach(c => {
-            // 沉浸式时间物理引擎：随机在 8秒 到 25秒 之间回复，模拟对方正好刷到这条朋友圈的错落感
-            let delay = Math.floor(Math.random() * 17000) + 8000;
-            setTimeout(() => { mGenerateAICommentForUserPost(c, post); }, delay);
-        });
-    }
-
-    // 专属大模型调用：让 AI 阅读你的朋友圈并留下评论
-    async function mGenerateAICommentForUserPost(c, post) {
-        let uName = momentsData.meName || gConfig.meName || '我';
-        let sysPrompt = `你是一个拥有独立人设的真实人物，正在用手机刷朋友圈。
-【你的人设指令】：
-${c.history[0].content}
-
-【核心记忆】：
-${c.memory || '暂无。'}
-
-【事件背景】：
-你的特别关注对象（${uName}）刚刚发布了一条朋友圈动态：
-“${post.content}”
-${post.sceneDesc ? `(TA还附带了一张照片，画面内容是：${post.sceneDesc})` : ''}
-
-【任务要求】：
-请结合你的人设和你们的关系，直接在TA的朋友圈下面留一句简短的评论。
-1. 不要写多余的动作描写或旁白，只输出你评论的纯文字。
-2. 保持口语化，不要长篇大论。
-3. 态度取决于你的人设（例如：高冷、傲娇、深情、调侃、秒回等）。`;
-
-        try {
-            const response = await fetch(`${gConfig.apiUrl}/v1/chat/completions`, { 
-                method: 'POST', 
-                headers: { 'Authorization': `Bearer ${gConfig.apiKey}`, 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ 
-                    model: gConfig.model, 
-                    messages: [{ role: 'system', content: sysPrompt }], 
-                    temperature: 0.8 
-                }) 
-            });
-
-            if (!response.ok) return;
-            const data = await response.json(); 
-            let replyText = data.choices[0].message.content.replace(/<[^>]+>/g, '').trim();
-            if (!replyText) replyText = "……";
-            
-            // 将评论推入这条动态的评论区
-            post.comments.push({ id: c.id, name: c.momentName || c.name, text: replyText });
-            saveMomentsData();
-            
-            // 🚀 核心：将 AI 给你的评论写入TA的大脑记忆，实现时空闭环！
-            c.memory = (c.memory ? c.memory + "\n\n" : "") + `[朋友圈事件 - ${new Date().toLocaleString()}]：用户(${uName}) 发了一条动态：“${post.content}”。你在下面主动评论了TA：“${replyText}”。`;
-            saveData();
-
-            // 如果当前正好停在朋友圈页面，静默重绘让新评论冒出来！
-            if (document.getElementById('view-main-moments').style.display !== 'none') {
-                mRenderAllFeeds();
-            }
-        } catch (error) {
-            console.error("AI 自动评论你的朋友圈失败:", error);
-        }
-    }
     // ================= 朋友圈角色资料与 AI 生成引擎 =================
     let m_currentEditProfileId = null;
 
@@ -16188,6 +16113,80 @@ ${c.history[0].content}
             btn.innerText = oldText;
             btn.style.pointerEvents = "auto";
             btn.style.opacity = "1";
+        }
+    }
+        // ================= 沉浸式引擎：AI 后台围观并评论你的朋友圈 =================
+    function mTriggerAIAfterUserPost(post) {
+        if(!gConfig.apiUrl || !gConfig.apiKey) return;
+        if(!contacts || contacts.length === 0) return;
+
+        // 获取我允许联动的联系人名单（如果没有设置专属联动，默认随机抓取所有 AI）
+        let linkedIds = momentsData.linkedContacts || [];
+        let availableAIs = contacts.filter(c => linkedIds.includes(c.id) || linkedIds.length === 0);
+        if(availableAIs.length === 0) return;
+
+        // 随机选 1 到 2 个 AI 来给你评论，不会显得太假
+        let commentersCount = Math.floor(Math.random() * 2) + 1;
+        let shuffledAIs = availableAIs.sort(() => 0.5 - Math.random()).slice(0, commentersCount);
+
+        shuffledAIs.forEach(c => {
+            // 沉浸式时间物理引擎：随机在 8秒 到 30秒 之间回复，模拟对方正好刷到这条朋友圈的错落感
+            let delay = Math.floor(Math.random() * 22000) + 8000;
+            setTimeout(() => { mGenerateAICommentForUserPost(c, post); }, delay);
+        });
+    }
+
+    // 专属大模型调用：让 AI 阅读你的朋友圈并留下评论
+    async function mGenerateAICommentForUserPost(c, post) {
+        let uName = momentsData.meName || gConfig.meName || '我';
+        let sysPrompt = `你是一个拥有独立人设的真实人物，正在用手机刷朋友圈。
+【你的人设指令】：
+${c.history[0].content}
+
+【核心记忆】：
+${c.memory || '暂无。'}
+
+【事件背景】：
+你的特别关注对象（${uName}）刚刚发布了一条朋友圈动态：
+“${post.content}”
+${post.sceneDesc ? `(TA还附带了一张照片，画面内容是：${post.sceneDesc})` : ''}
+
+【任务要求】：
+请结合你的人设和你们的关系，直接在TA的朋友圈下面留一句简短的评论。
+1. 不要写多余的动作描写或旁白，只输出你评论的纯文字。
+2. 保持口语化，不要长篇大论。
+3. 态度取决于你的人设（例如：高冷、傲娇、深情、调侃、秒回等）。`;
+
+        try {
+            const response = await fetch(`${gConfig.apiUrl}/v1/chat/completions`, { 
+                method: 'POST', 
+                headers: { 'Authorization': `Bearer ${gConfig.apiKey}`, 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ 
+                    model: gConfig.model, 
+                    messages: [{ role: 'system', content: sysPrompt }], 
+                    temperature: 0.8 
+                }) 
+            });
+
+            if (!response.ok) return;
+            const data = await response.json(); 
+            let replyText = data.choices[0].message.content.replace(/<[^>]+>/g, '').trim();
+            if (!replyText) replyText = "……";
+            
+            // 将评论推入这条动态的评论区
+            post.comments.push({ id: c.id, name: c.momentName || c.name, text: replyText });
+            saveMomentsData();
+            
+            // 🚀 核心：将 AI 给你的评论写入TA的大脑记忆，实现时空闭环！
+            c.memory = (c.memory ? c.memory + "\n\n" : "") + `[朋友圈事件 - ${new Date().toLocaleString()}]：用户(${uName}) 发了一条动态：“${post.content}”。你在下面主动评论了TA：“${replyText}”。`;
+            saveData();
+
+            // 如果当前正好停在朋友圈页面，静默重绘让新评论冒出来！
+            if (document.getElementById('view-main-moments').style.display !== 'none') {
+                mRenderAllFeeds();
+            }
+        } catch (error) {
+            console.error("AI 自动评论你的朋友圈失败:", error);
         }
     }
 </script>
