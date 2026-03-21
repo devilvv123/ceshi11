@@ -5376,7 +5376,7 @@
         .m-page { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow-y: auto; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; -webkit-overflow-scrolling: touch; padding-bottom: 110px; /* 强制底部垫高，完美防遮挡 */ }
         .m-page.active { opacity: 1; pointer-events: auto; }
 
-        .m-square-header-title { font-size: 22px; font-weight: 300; letter-spacing: 4px; color: #a0a5aa; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 1px solid rgba(0,0,0,0.05); position: relative; }
+        .m-square-header-title { font-size: 22px; font-weight: 300; letter-spacing: 4px; color: #90959c; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 1px solid rgba(0,0,0,0.05); position: relative; }
         .m-vertical-decor { position: absolute; right: 20px; top: 50%; transform: translateY(-50%) rotate(90deg); transform-origin: center right; font-size: 10px; letter-spacing: 8px; color: #c0c5cc; font-weight: 400; white-space: nowrap; pointer-events: none; z-index: 10; text-shadow: 1px 1px 0 rgba(255,255,255,0.8); }
         .m-vinyl-widget { position: absolute; top: 15px; right: 15px; display: flex; align-items: center; gap: 12px; z-index: 50; pointer-events: none; }
         .m-vinyl-text { font-size: 10px; color: #90959c; letter-spacing: 2px; font-weight: 400; text-transform: uppercase; text-shadow: 1px 1px 0 rgba(255,255,255,0.8); }
@@ -6628,7 +6628,7 @@
             .m-post-content, .m-bookmark-content { font-size: ${Math.max(11, fSize + 3)}px !important; line-height: 1.6 !important; }
             .m-post-name, .m-comment-author, .m-profile-name { font-size: ${Math.max(10, fSize + 2)}px !important; }
             .m-comment-item span, .m-post-time, .m-comment-input { font-size: ${Math.max(9, fSize + 1)}px !important; }
-            .m-square-header-title { font-size: ${fSize + 10}px !important; color: #a0a5aa !important; }
+            .m-square-header-title { font-size: ${fSize + 12}px !important; }
         `; 
         
         if(gConfig.chatBottomBarColor) {
@@ -15122,10 +15122,6 @@ ${actionRule}
                     </label>
                 </div>
                 <div class="m-profile-info-container">
-                    <!-- 新增：右侧配置按钮 -->
-                    <div style="position: absolute; right: 20px; top: 15px; cursor: pointer; color: var(--c-gray-dark); z-index: 10;" onclick="mOpenLinkModal('me')" title="设置我发动态时的围观角色">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                    </div>
                     <div class="m-profile-avatar-wrapper" onclick="document.getElementById('m-me-avatar-file').click()" title="点击更换头像">
                         <img class="m-profile-avatar" src="${meAvatar}">
                     </div>
@@ -15422,6 +15418,10 @@ ${actionRule}
 【你的人设指令】：
 ${c.history[0].content}
 
+【🛡️ 结界警告：朋友圈绝对隔离协议 🛡️】
+你现在是拿着手机在回复朋友圈评论！你们是隔着屏幕的状态！绝对不要出现当面聊天的动作描写（比如 *把你按在墙上*、*轻抚你的脸* 等）！
+如果有动作描写，【只能】是看手机、打字、自拍、或者你周围环境的描写！绝对禁止越界！
+
 【事件背景】：
 不久前，你在朋友圈发布了这样一条动态：
 “${post.content}”
@@ -15429,13 +15429,12 @@ ${c.history[0].content}
 刚刚，用户（${uName}）在你的这条动态下面评论了你：
 “${myCommentText}”
 
-【🚨 最高界限警告：网络社交隔离协议 🚨】：
-1. 你现在是在用手机打字【回复评论】，绝对不是线下说话！
-2. 【绝对禁止】在回复中包含任何星号、动作或神态描写！只能有纯文字和极少量的 emoji。
-
 【任务要求】：
-请直接在朋友圈回复TA！
-你的态度完全取决于你的人设，保持口语化。`;
+请结合你的人设和当时发动态的心情，直接在朋友圈回复TA！
+注意：
+1. 不要写太多多余的旁白或动作描写，重点是输出你回复的纯文字。
+2. 保持朋友圈回复的简短口语化，不要长篇大论。
+3. 你的态度完全取决于你的人设（如果是高冷就回得短，如果是傲娇就怼回去，如果是深情就撩TA）。`;
 
         try {
             const response = await fetch(`${gConfig.apiUrl}/v1/chat/completions`, { 
@@ -15614,82 +15613,72 @@ ${c.history[0].content}
         }, 400); 
     }
 
-    // ================= 朋友圈联动面板逻辑 (独立联系人版) =================
+    // ================= 朋友圈联动面板逻辑 (独立联系人版 + 我的主页) =================
     let m_currentLinkTargetId = null;
 
     function mOpenLinkModal() {
-        // 判断当前处于哪个页面
         const activePage = document.querySelector('.m-page.active');
         if (!activePage) return;
         
         const pageId = activePage.id.replace('m-page-', '');
         if (pageId === 'square') {
-            return alert("请先在左侧点击切换到自己或某个【AI角色】的主页，再为其设置专属的互动圈子！");
+            return alert("请先在左侧点击切换到【你的主页】或某个【AI】的主页，再设置专属的互动圈子！");
         }
 
         m_currentLinkTargetId = pageId;
-        
-        // 分离存储数据：我是我的，AI是AI的
-        let currentLinked = [];
+        const list = document.getElementById('m-link-list');
+        list.innerHTML = '';
+
         if (pageId === 'me') {
-            if(!momentsData.myLinkedContacts) momentsData.myLinkedContacts = [];
-            currentLinked = momentsData.myLinkedContacts;
+            if (!momentsData.meLinkedContacts) momentsData.meLinkedContacts = [];
+            contacts.forEach(otherC => {
+                const isChecked = momentsData.meLinkedContacts.includes(otherC.id) ? 'checked' : '';
+                let avData = otherC.chatAvatar || otherC.avatar;
+                list.innerHTML += `
+                    <label style="display:flex; justify-content:space-between; align-items:center; padding: 12px; background: rgba(0,0,0,0.03); border-radius: 12px; cursor: pointer;">
+                        <div style="display:flex; align-items:center; gap: 10px;">
+                            <div class="c-avatar-wrap" style="width: 32px; height: 32px; border-radius: 8px; margin-right: 0; box-shadow: none; border: none; padding: ${avData ? '0' : '4px'};">${renderAvatarHTML(avData, 'bot')}</div>
+                            <span style="font-size: 14px; font-weight: 700; color: var(--c-black);">${otherC.name}</span>
+                        </div>
+                        <input type="checkbox" class="btn-switch m-link-cb" value="${otherC.id}" ${isChecked}>
+                    </label>
+                `;
+            });
         } else {
             const c = contacts.find(x => x.id === pageId);
             if (!c) return;
             if (!c.linkedContacts) c.linkedContacts = [];
-            currentLinked = c.linkedContacts;
-        }
-
-        const list = document.getElementById('m-link-list');
-        list.innerHTML = '';
-
-        contacts.forEach(otherC => {
-            if (otherC.id === pageId) return; // 排除自己
-            const isChecked = currentLinked.includes(otherC.id) ? 'checked' : '';
-            let avData = otherC.chatAvatar || otherC.avatar;
+            
+            // 加上“我”
+            const meChecked = c.linkedContacts.includes('me') ? 'checked' : '';
             list.innerHTML += `
                 <label style="display:flex; justify-content:space-between; align-items:center; padding: 12px; background: rgba(0,0,0,0.03); border-radius: 12px; cursor: pointer;">
                     <div style="display:flex; align-items:center; gap: 10px;">
-                        <div class="c-avatar-wrap" style="width: 32px; height: 32px; border-radius: 8px; margin-right: 0; box-shadow: none; border: none; padding: ${avData ? '0' : '4px'};">${renderAvatarHTML(avData, 'bot')}</div>
-                        <span style="font-size: 14px; font-weight: 700; color: var(--c-black);">${otherC.name}</span>
+                        <div class="c-avatar-wrap" style="width: 32px; height: 32px; border-radius: 8px; margin-right: 0; box-shadow: none; border: none; padding: ${gConfig.meAvatar ? '0' : '4px'};">${renderAvatarHTML(gConfig.meAvatar, 'user')}</div>
+                        <span style="font-size: 14px; font-weight: 700; color: var(--c-black);">${gConfig.meName || '我'}</span>
                     </div>
-                    <input type="checkbox" class="btn-switch m-link-cb" value="${otherC.id}" ${isChecked}>
+                    <input type="checkbox" class="btn-switch m-link-cb" value="me" ${meChecked}>
                 </label>
             `;
-        });
 
-        if (contacts.length <= 1) {
-            list.innerHTML = '<div style="text-align:center; font-size:11px; color:#999;">当前系统角色不足，无法添加其他联动。</div>';
+            contacts.forEach(otherC => {
+                if (otherC.id === c.id) return;
+                const isChecked = c.linkedContacts.includes(otherC.id) ? 'checked' : '';
+                let avData = otherC.chatAvatar || otherC.avatar;
+                list.innerHTML += `
+                    <label style="display:flex; justify-content:space-between; align-items:center; padding: 12px; background: rgba(0,0,0,0.03); border-radius: 12px; cursor: pointer;">
+                        <div style="display:flex; align-items:center; gap: 10px;">
+                            <div class="c-avatar-wrap" style="width: 32px; height: 32px; border-radius: 8px; margin-right: 0; box-shadow: none; border: none; padding: ${avData ? '0' : '4px'};">${renderAvatarHTML(avData, 'bot')}</div>
+                            <span style="font-size: 14px; font-weight: 700; color: var(--c-black);">${otherC.name}</span>
+                        </div>
+                        <input type="checkbox" class="btn-switch m-link-cb" value="${otherC.id}" ${isChecked}>
+                    </label>
+                `;
+            });
         }
 
-        document.getElementById('m-link-sheet').classList.add('active');
-    }
-        const c = contacts.find(x => x.id === pageId);
-        if (!c) return;
-
-        if (!c.linkedContacts) c.linkedContacts = [];
-
-        const list = document.getElementById('m-link-list');
-        list.innerHTML = '';
-
-        contacts.forEach(otherC => {
-            if (otherC.id === c.id) return; // 排除自己
-            const isChecked = c.linkedContacts.includes(otherC.id) ? 'checked' : '';
-            let avData = otherC.chatAvatar || otherC.avatar;
-            list.innerHTML += `
-                <label style="display:flex; justify-content:space-between; align-items:center; padding: 12px; background: rgba(0,0,0,0.03); border-radius: 12px; cursor: pointer;">
-                    <div style="display:flex; align-items:center; gap: 10px;">
-                        <div class="c-avatar-wrap" style="width: 32px; height: 32px; border-radius: 8px; margin-right: 0; box-shadow: none; border: none; padding: ${avData ? '0' : '4px'};">${renderAvatarHTML(avData, 'bot')}</div>
-                        <span style="font-size: 14px; font-weight: 700; color: var(--c-black);">${otherC.name}</span>
-                    </div>
-                    <input type="checkbox" class="btn-switch m-link-cb" value="${otherC.id}" ${isChecked}>
-                </label>
-            `;
-        });
-
-        if (contacts.length <= 1) {
-            list.innerHTML = '<div style="text-align:center; font-size:11px; color:#999;">当前系统只有一个角色，无法添加其他联动。</div>';
+        if (contacts.length === 0 || (pageId !== 'me' && contacts.length === 1)) {
+            list.innerHTML += '<div style="text-align:center; font-size:11px; color:#999; margin-top: 10px;">系统中还没有其他角色，无法添加联动。</div>';
         }
 
         document.getElementById('m-link-sheet').classList.add('active');
@@ -15702,19 +15691,18 @@ ${c.history[0].content}
 
     function mSaveLinkModal() {
         if (!m_currentLinkTargetId) return mCloseLinkModal();
-        
         const cbs = document.querySelectorAll('.m-link-cb:checked');
-        const selectedIds = Array.from(cbs).map(cb => cb.value);
+        const ids = Array.from(cbs).map(cb => cb.value);
 
         if (m_currentLinkTargetId === 'me') {
-            momentsData.myLinkedContacts = selectedIds;
+            momentsData.meLinkedContacts = ids;
             saveMomentsData();
-            alert(`已为你保存专属围观列表！\n下次你发动态时，只有被勾选的角色可能会在后台主动评论你。`);
+            alert(`已为您保存专属互动圈子！\n您发动态时，只有勾选的 AI 会来围观评论。`);
         } else {
             const c = contacts.find(x => x.id === m_currentLinkTargetId);
             if (c) {
-                c.linkedContacts = selectedIds;
-                saveData(); // 存入联系人底层数据
+                c.linkedContacts = ids;
+                saveData();
                 alert(`已为【${c.name}】保存专属互动圈子！\nTA发动态时将只与勾选的人联动。`);
             }
         }
@@ -15764,22 +15752,22 @@ ${c.history[0].content}
 【核心记忆】：
 ${c.memory || '暂无。'}
 
+【🛡️ 结界警告：朋友圈绝对隔离协议 🛡️】
+你现在是拿着手机在发朋友圈！绝对不要出现当面聊天的动作描写（比如 *把你按在墙上*、*轻抚你的脸* 等），你们是隔着屏幕的网友状态！
+如果有动作描写，【只能】是看手机、打字、自拍、或者你周围环境的描写！绝对禁止越界！
+
 【⌚ 现实时间感知】：
-现在你所处的真实世界时间是 ${now.toLocaleString()}，属于【${timeDesc}】。
-请务必结合这个时间点来构思动态！
+现在你所处的真实世界时间是 ${now.toLocaleString()}，属于【${timeDesc}】。请务必结合时间点构思动态！
 
 ${linkedInfoStr}
 
-【🚨 最高界限警告：网络社交隔离协议 🚨】：
-1. 你现在是在**发网络朋友圈/打字评论**，绝对不是在【面对面线下小剧场】！
-2. 你的文字必须是**纯净的网络对白/短句**！【绝对禁止】输出任何星号或括号包裹的动作、神态或心理描写（如：*冷笑*、*抬眼*、*抱住你* 等全部封杀）！
-3. 把所有的感情和情绪隐藏在**单纯的文字、标点或偶尔使用的 emoji** 中。
-4. 用户（${uName}，ID: "me"）是拥有独立意志的真人！你【绝对禁止】在评论区替用户伪造评论！
+【🚨 最高绝对警告】：
+用户（${uName}，ID: "me"）是拥有独立意志的真人！你【绝对、绝对、绝对禁止】在评论区替用户（${uName}）伪造评论！你只能模拟名单里出现的其他人进行评论！
 
 【任务要求】：
-1. 构思一条极具你性格口吻的朋友圈动态。
-2. 决定这条动态是否带有一张“虚拟照片”（通过 sceneDesc 描写，若无填null）。
-3. 模拟圈子名单里其他人的回复。你们是在网上冲浪，语气要符合当代网友的习性。
+1. 发一条符合你口吻的朋友圈动态。
+2. 决定这条动态是否带有一张“虚拟照片”（通过 sceneDesc 描写）。
+3. 如果上方提供了圈子名单，请在 comments 中模拟他们对你的生动回复（你也可以作为博主回复他们）。绝对不要模拟用户的回复！
 
 【格式要求：必须且只能输出严格合法的 JSON 对象】：
 {
@@ -16176,7 +16164,7 @@ ${c.history[0].content}
         if(!contacts || contacts.length === 0) return;
 
         // 获取我允许联动的联系人名单（如果没有设置专属联动，默认随机抓取所有 AI）
-        let linkedIds = momentsData.linkedContacts || [];
+        let linkedIds = momentsData.meLinkedContacts || [];
         let availableAIs = contacts.filter(c => linkedIds.includes(c.id) || linkedIds.length === 0);
         if(availableAIs.length === 0) return;
 
@@ -16201,18 +16189,20 @@ ${c.history[0].content}
 【核心记忆】：
 ${c.memory || '暂无。'}
 
+【🛡️ 结界警告：朋友圈绝对隔离协议 🛡️】
+你现在是拿着手机在刷朋友圈！绝对不要出现当面聊天的动作描写（比如 *把你按在墙上*、*轻抚你的脸* 等），你们是隔着屏幕的！
+如果有动作描写，【只能】是看手机、打字、自拍、或者你周围环境的描写！绝对禁止越界！
+
 【事件背景】：
 你的特别关注对象（${uName}）刚刚发布了一条朋友圈动态：
 “${post.content}”
 ${post.sceneDesc ? `(TA还附带了一张照片，画面内容是：${post.sceneDesc})` : ''}
 
-【🚨 最高界限警告：网络社交隔离协议 🚨】：
-1. 你现在是在用手机打字进行【网络评论】，绝对不是在跟TA面对面！
-2. 【绝对禁止】在你的评论中出现任何动作描写、神态描写（如 *皱眉*、*轻笑*）！
-3. 把你的情绪收敛在单纯的文字和标点符号里。
-
 【任务要求】：
-请结合你的人设，直接在TA的朋友圈下面留一句简短的评论。保持口语化，态度取决于你的人设。`;
+请结合你的人设和你们的关系，直接在TA的朋友圈下面留一句简短的评论。
+1. 不要写多余的动作描写或旁白，只输出你评论的纯文字。
+2. 保持口语化，不要长篇大论。
+3. 态度取决于你的人设（例如：高冷、傲娇、深情、调侃、秒回等）。`;
 
         try {
             const response = await fetch(`${gConfig.apiUrl}/v1/chat/completions`, { 
