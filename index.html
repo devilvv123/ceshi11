@@ -6623,6 +6623,12 @@
             .nav-header, .nav-title-center, .brand-title, .toast-title, .modal-title, .widget-name { 
                 font-size: ${fSize + 4}px !important; 
             }
+            
+            /* 5. 朋友圈(Moments) 专属字号挂载 */
+            .m-post-content, .m-bookmark-content { font-size: ${Math.max(12, fSize + 5)}px !important; line-height: 1.6 !important; }
+            .m-post-name, .m-comment-author, .m-profile-name { font-size: ${Math.max(11, fSize + 4)}px !important; }
+            .m-comment-item span, .m-post-time, .m-comment-input { font-size: ${Math.max(10, fSize + 2)}px !important; }
+            .m-square-header-title { font-size: ${fSize + 12}px !important; }
         `; 
         
         if(gConfig.chatBottomBarColor) {
@@ -15374,10 +15380,88 @@ ${actionRule}
         let post = momentsData.posts.find(p => p.id === postId);
         if(!post) return;
         
-        post.comments.push({ name: gConfig.meName || '我', text: text });
+        let uName = momentsData.meName || gConfig.meName || '我';
+        
+        // 1. 把我的评论推上去
+        post.comments.push({ id: 'me', name: uName, text: text });
         saveMomentsData();
         inputEl.value = '';
-        mRenderAllFeeds(); // 粗暴重绘，保证一致性
+        mRenderAllFeeds(); 
+        
+        // 2. 如果这是 AI 发的帖子，触发核心记忆写入 & 延迟回复！
+        if (post.authorId !== 'me') {
+            const c = contacts.find(x => x.id === post.authorId);
+            if (c) {
+                // 写入核心记忆
+                c.memory = (c.memory ? c.memory + "\n\n" : "") + `[朋友圈互动 - ${new Date().toLocaleString()}]：用户(${uName}) 在你的朋友圈动态（“${post.content}”）下方评论了你：“${text}”。`;
+                saveData();
+                
+                // 启动异步延时回复引擎 (模拟对方看到消息打字，延迟3~5秒)
+                let delay = Math.floor(Math.random() * 2000) + 3000;
+                setTimeout(() => { mTriggerAICommentReply(c, post, text, uName); }, delay);
+            }
+        }
+    }
+
+    // 专属大模型调用：让 AI 在朋友圈回复我的评论
+    async function mTriggerAICommentReply(c, post, myCommentText, uName) {
+        if(!gConfig.apiUrl || !gConfig.apiKey) return;
+
+        let sysPrompt = `你是一个拥有独立人设的真实人物，正在刷朋友圈。
+【你的人设指令】：
+${c.history[0].content}
+
+【事件背景】：
+不久前，你在朋友圈发布了这样一条动态：
+“${post.content}”
+
+刚刚，用户（${uName}）在你的这条动态下面评论了你：
+“${myCommentText}”
+
+【任务要求】：
+请结合你的人设和当时发动态的心情，直接在朋友圈回复TA！
+注意：
+1. 不要写任何多余的旁白或动作描写，只输出你回复的纯文字。
+2. 保持朋友圈回复的简短口语化，不要长篇大论。
+3. 你的态度完全取决于你的人设（如果是高冷就回得短，如果是傲娇就怼回去，如果是深情就撩TA）。`;
+
+        try {
+            const response = await fetch(`${gConfig.apiUrl}/v1/chat/completions`, { 
+                method: 'POST', 
+                headers: { 'Authorization': `Bearer ${gConfig.apiKey}`, 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ 
+                    model: gConfig.model, 
+                    messages: [{ role: 'system', content: sysPrompt }], 
+                    temperature: 0.8 
+                }) 
+            });
+
+            if (!response.ok) return;
+            const data = await response.json(); 
+            let replyText = data.choices[0].message.content.replace(/<[^>]+>/g, '').trim();
+            
+            // 防空回兜底
+            if (!replyText) replyText = "……";
+            
+            // 构建带 @ 的回复效果
+            let finalReplyText = `回复 ${uName}：${replyText}`;
+            
+            // 把 AI 的回复推入那条帖子的评论区
+            post.comments.push({ id: c.id, name: c.momentName || c.name, text: finalReplyText });
+            saveMomentsData();
+            
+            // 再次写入核心记忆：告诉 AI 自己回复了什么，形成完整闭环
+            c.memory = (c.memory ? c.memory + "\n\n" : "") + `[朋友圈互动]：你回复了 ${uName} 的评论：“${replyText}”。`;
+            saveData();
+
+            // 如果当前正好停在朋友圈页面，重绘让新评论冒出来！
+            if (document.getElementById('view-main-moments').style.display !== 'none') {
+                mRenderAllFeeds();
+            }
+
+        } catch (error) {
+            console.error("AI 评论回复失败:", error);
+        }
     }
 
     // 交互：删除动态
@@ -15513,52 +15597,65 @@ ${actionRule}
         }, 400); 
     }
 
-    // ================= 朋友圈联动面板逻辑 =================
+    // ================= 朋友圈联动面板逻辑 (独立联系人版) =================
+    let m_currentLinkTargetId = null;
+
     function mOpenLinkModal() {
+        // 判断当前处于哪个页面
+        const activePage = document.querySelector('.m-page.active');
+        if (!activePage) return;
+        
+        const pageId = activePage.id.replace('m-page-', '');
+        if (pageId === 'square' || pageId === 'me') {
+            return alert("请先在左侧点击切换到某个【特定AI角色】的主页，再为TA设置专属的互动圈子！");
+        }
+
+        m_currentLinkTargetId = pageId;
+        const c = contacts.find(x => x.id === pageId);
+        if (!c) return;
+
+        if (!c.linkedContacts) c.linkedContacts = [];
+
         const list = document.getElementById('m-link-list');
         list.innerHTML = '';
-        if(!momentsData.linkedContacts) momentsData.linkedContacts = [];
 
-        // 将“我”也作为一个可选互动对象
-        const meChecked = momentsData.linkedContacts.includes('me') ? 'checked' : '';
-        list.innerHTML += `
-            <label style="display:flex; justify-content:space-between; align-items:center; padding: 12px; background: rgba(0,0,0,0.03); border-radius: 12px; cursor: pointer;">
-                <div style="display:flex; align-items:center; gap: 10px;">
-                    <!-- 核心修复：引入系统默认的 c-avatar-wrap 类，它内置了 img 100% cover 限制，彻底锁死原图尺寸防止撑爆 -->
-                    <div class="c-avatar-wrap" style="width: 32px; height: 32px; border-radius: 8px; margin-right: 0; box-shadow: none; border: none; padding: ${gConfig.meAvatar ? '0' : '4px'};">${renderAvatarHTML(gConfig.meAvatar, 'user')}</div>
-                    <span style="font-size: 14px; font-weight: 700; color: var(--c-black);">${gConfig.meName || '我'}</span>
-                </div>
-                <input type="checkbox" class="btn-switch m-link-cb" value="me" ${meChecked}>
-            </label>
-        `;
-
-        contacts.forEach(c => {
-            const isChecked = momentsData.linkedContacts.includes(c.id) ? 'checked' : '';
-            let avData = c.chatAvatar || c.avatar;
+        contacts.forEach(otherC => {
+            if (otherC.id === c.id) return; // 排除自己
+            const isChecked = c.linkedContacts.includes(otherC.id) ? 'checked' : '';
+            let avData = otherC.chatAvatar || otherC.avatar;
             list.innerHTML += `
                 <label style="display:flex; justify-content:space-between; align-items:center; padding: 12px; background: rgba(0,0,0,0.03); border-radius: 12px; cursor: pointer;">
                     <div style="display:flex; align-items:center; gap: 10px;">
-                        <!-- 核心修复：同样引入 c-avatar-wrap 类锁死图片缩放 -->
                         <div class="c-avatar-wrap" style="width: 32px; height: 32px; border-radius: 8px; margin-right: 0; box-shadow: none; border: none; padding: ${avData ? '0' : '4px'};">${renderAvatarHTML(avData, 'bot')}</div>
-                        <span style="font-size: 14px; font-weight: 700; color: var(--c-black);">${c.name}</span>
+                        <span style="font-size: 14px; font-weight: 700; color: var(--c-black);">${otherC.name}</span>
                     </div>
-                    <input type="checkbox" class="btn-switch m-link-cb" value="${c.id}" ${isChecked}>
+                    <input type="checkbox" class="btn-switch m-link-cb" value="${otherC.id}" ${isChecked}>
                 </label>
             `;
         });
+
+        if (contacts.length <= 1) {
+            list.innerHTML = '<div style="text-align:center; font-size:11px; color:#999;">当前系统只有一个角色，无法添加其他联动。</div>';
+        }
+
         document.getElementById('m-link-sheet').classList.add('active');
     }
 
     function mCloseLinkModal() {
         document.getElementById('m-link-sheet').classList.remove('active');
+        m_currentLinkTargetId = null;
     }
 
     function mSaveLinkModal() {
-        const cbs = document.querySelectorAll('.m-link-cb:checked');
-        momentsData.linkedContacts = Array.from(cbs).map(cb => cb.value);
-        saveMomentsData();
+        if (!m_currentLinkTargetId) return mCloseLinkModal();
+        const c = contacts.find(x => x.id === m_currentLinkTargetId);
+        if (c) {
+            const cbs = document.querySelectorAll('.m-link-cb:checked');
+            c.linkedContacts = Array.from(cbs).map(cb => cb.value);
+            saveData(); // 存入联系人底层数据
+            alert(`已为【${c.name}】保存专属互动圈子！\nTA发动态时将只与勾选的人联动。`);
+        }
         mCloseLinkModal();
-        alert('联动角色已保存！下次 AI 发动态时，只有被勾选的角色会在评论区互动。');
     }
 
     // ================= 真正调取大模型发朋友圈 =================
@@ -15578,21 +15675,19 @@ ${actionRule}
         btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
 
         // 构建联动好友名单，告诉AI谁可以来互动
+         // 构建独立联动好友名单 (只使用该角色的 c.linkedContacts)
         let linkedInfoList = [];
-        if(momentsData.linkedContacts && momentsData.linkedContacts.length > 0) {
-            momentsData.linkedContacts.forEach(linkId => {
-                if(linkId === targetUid) return; // 排除自己
-                if(linkId === 'me') {
-                    linkedInfoList.push(`{ id: "me", name: "${gConfig.meName || '我'}", relation: "与你的对话对象(人类)" }`);
-                } else {
-                    let lc = contacts.find(x => x.id === linkId);
-                    if(lc) linkedInfoList.push(`{ id: "${lc.id}", name: "${lc.name}", relation: "系统里的其他角色" }`);
-                }
+        if(c.linkedContacts && c.linkedContacts.length > 0) {
+            c.linkedContacts.forEach(linkId => {
+                let lc = contacts.find(x => x.id === linkId);
+                if(lc) linkedInfoList.push(`{ id: "${lc.id}", name: "${lc.momentName || lc.name}", relation: "存在于你通讯录里的朋友" }`);
             });
         }
+        
+        let uName = gConfig.meName || '我';
         let linkedInfoStr = linkedInfoList.length > 0 
-            ? "【当前允许在你朋友圈底下互动的联系人】：\n" + linkedInfoList.join('\n') + "\n(你可以从这些人里挑出几个，让他们来点赞，或者生动地模拟他们对你这条朋友圈的评论/互怼！)"
-            : "当前没有别人与你联动，你只需发一条动态即可。";
+            ? "【你当前的朋友圈互动圈子名单】：\n" + linkedInfoList.join('\n') + "\n(你可以从这些人里挑出几个，模拟他们对你这条朋友圈的点赞和评论，你们可以互相调侃互怼！)"
+            : "当前没有别人与你联动，你只需发一条个人动态即可。";
 
         // ⌚ 核心时间感知引擎
         const now = new Date();
@@ -15603,26 +15698,30 @@ ${actionRule}
 【你的人设指令】：
 ${c.history[0].content}
 
+【核心记忆】：
+${c.memory || '暂无。'}
+
 【⌚ 现实时间感知】：
-现在你所处的真实世界时间是 ${now.toLocaleString()}，属于【${timeDesc}】。
-请务必结合这个时间点来构思动态！例如：如果是深夜，可以发感性的失眠或夜景；如果是早晨，可以发咖啡或晨光。绝对不要在晚上发“今天早上阳光真好”这种破坏时空沉浸感的动态！
+现在你所处的真实世界时间是 ${now.toLocaleString()}，属于【${timeDesc}】。请务必结合时间点构思动态！
 
 ${linkedInfoStr}
 
-【任务要求】：
-1. 结合你的人设和当前的时间，发一条符合你口吻的朋友圈动态。绝不要太长。
-2. 你可以决定这条动态是否带有一张“虚拟照片”。
-3. 如果上方提供了允许互动的人，请在评论区模拟他们极其真实、生动、甚至毫不客气的回复（例如阴阳怪气、关心、开玩笑）。你也可以作为博主回复他们。
+【🚨 最高绝对警告】：
+用户（${uName}，ID: "me"）是拥有独立意志的真人！你【绝对、绝对、绝对禁止】在评论区替用户（${uName}）伪造评论！你只能模拟名单里出现的其他人进行评论！
 
-【最高警告：必须且只能输出严格合法的 JSON 对象，不加任何 Markdown 标记，不加注释！】
-JSON 格式严格如下：
+【任务要求】：
+1. 发一条符合你口吻的朋友圈动态。
+2. 决定这条动态是否带有一张“虚拟照片”（通过 sceneDesc 描写）。
+3. 如果上方提供了圈子名单，请在 comments 中模拟他们对你的生动回复（你也可以作为博主回复他们）。绝对不要模拟用户的回复！
+
+【格式要求：必须且只能输出严格合法的 JSON 对象】：
 {
   "content": "朋友圈正文",
   "isTextPhoto": true或false,
-  "sceneDesc": "如果isTextPhoto为true，详细描述照片画面；如果是false，填null",
-  "likes": ["给这条动态点赞的人的id列表（只能从上方列表里选，也可以为空数组）"],
+  "sceneDesc": "如果isTextPhoto为true，详细描写画面；如果是false，填null",
+  "likes": ["点赞者的id列表（只能从上方列表选）"],
   "comments": [
-    { "authorId": "评论者的id（只能选上面列表里的id，或者是你自己的id '${c.id}' 来回复别人）", "authorName": "评论者的名字", "text": "评论内容" }
+    { "authorId": "评论者的id（只能从上方列表选，或是你的id '${c.id}'）", "authorName": "评论者的网名", "text": "评论内容" }
   ]
 }`;
 
@@ -15641,7 +15740,6 @@ JSON 格式严格如下：
             const data = await response.json(); 
             let rawContent = data.choices[0].message.content.trim();
             
-            // 剥除可能的 Markdown json 标记
             rawContent = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
             let startIdx = rawContent.indexOf('{'); let endIdx = rawContent.lastIndexOf('}');
             if(startIdx !== -1 && endIdx !== -1) {
@@ -15649,6 +15747,14 @@ JSON 格式严格如下：
             }
             
             const aiPostData = JSON.parse(rawContent);
+
+            // 过滤掉 AI 脑抽替我(me)生成的点赞和评论
+            let cleanLikes = Array.isArray(aiPostData.likes) ? aiPostData.likes.filter(id => id !== 'me') : [];
+            let cleanComments = Array.isArray(aiPostData.comments) ? aiPostData.comments.filter(cm => cm.authorId !== 'me').map(cm => ({
+                id: cm.authorId,
+                name: cm.authorName || '匿名',
+                text: cm.text || ''
+            })) : [];
 
             // 推入帖子数组
             momentsData.posts.unshift({
@@ -15661,15 +15767,14 @@ JSON 格式严格如下：
                 isTextPhoto: aiPostData.isTextPhoto === true,
                 sceneDesc: aiPostData.sceneDesc || null,
                 timeStr: 'JUST NOW',
-                timestamp: Date.now(), // 核心：注入真实时间戳
-                likes: Array.isArray(aiPostData.likes) ? aiPostData.likes : [],
-                comments: Array.isArray(aiPostData.comments) ? aiPostData.comments.map(cm => ({
-                    id: cm.authorId,
-                    name: cm.authorName || '匿名',
-                    text: cm.text || ''
-                })) : []
+                timestamp: Date.now(),
+                likes: cleanLikes,
+                comments: cleanComments
             });
 
+            // 🚀 核心：将 AI 发朋友圈的事件写入核心记忆！
+            c.memory = (c.memory ? c.memory + "\n\n" : "") + `[朋友圈事件 - ${new Date().toLocaleString()}]：你刚刚发布了一条朋友圈动态：“${aiPostData.content}”。`;
+            saveData();
             saveMomentsData();
             mRenderAllFeeds();
 
