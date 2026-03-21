@@ -6625,11 +6625,11 @@
             }
             
             /* 5. 朋友圈(Moments) 专属字号挂载 */
-            .m-post-name, .m-comment-author, .m-profile-name { font-size: ${Math.max(13, fSize + 4)}px !important; font-weight: 700 !important; }
-            .m-post-content, .m-bookmark-content { font-size: ${Math.max(12, fSize + 2)}px !important; line-height: 1.5 !important; }
-            .m-comment-item span, .m-comment-input { font-size: ${Math.max(11, fSize + 1)}px !important; }
-            .m-post-time { font-size: ${Math.max(10, fSize)}px !important; }
-            .m-square-header-title { font-size: ${fSize + 12}px !important; }
+            .m-post-name, .m-profile-name { font-size: ${Math.max(13, fSize + 5)}px !important; font-weight: 800 !important; }
+            .m-post-content, .m-bookmark-content { font-size: ${Math.max(11, fSize + 2)}px !important; line-height: 1.6 !important; color: #4A4A4A !important; }
+            .m-comment-author { font-size: ${Math.max(11, fSize + 3)}px !important; font-weight: 700 !important; }
+            .m-comment-item span, .m-post-time, .m-comment-input { font-size: ${Math.max(10, fSize + 1)}px !important; }
+            .m-square-header-title { font-size: ${fSize + 12}px !important; color: #90959c !important; }
         `; 
         
         if(gConfig.chatBottomBarColor) {
@@ -15212,7 +15212,7 @@ ${actionRule}
         
         let commentsHtml = '';
         if(p.comments && p.comments.length > 0) {
-            p.comments.forEach((cm, idx) => {
+            p.comments.forEach((cm, cIdx) => {
                 // 评论区的名字也同步享受实时更新
                 let cmName = cm.name;
                 if (cm.id === 'me') {
@@ -15221,8 +15221,7 @@ ${actionRule}
                     const c = contacts.find(x => x.id === cm.id);
                     if (c) cmName = c.momentName || c.name;
                 }
-                // 加上点击删除功能
-                commentsHtml += `<div class="m-comment-item" style="cursor: pointer; transition: opacity 0.2s;" onclick="mDeleteComment('${p.id}', ${idx})" title="点击删除这条评论" onmousedown="this.style.opacity='0.5'" onmouseup="this.style.opacity='1'"><span class="m-comment-author">${cmName}：</span><span style="color: #4A4A4A;">${cm.text}</span></div>`;
+                commentsHtml += `<div class="m-comment-item" onclick="mDeleteComment('${p.id}', ${cIdx})" style="cursor: pointer;" title="点击删除此评论"><span class="m-comment-author">${cmName}：</span><span>${cm.text}</span></div>`;
             });
         }
 
@@ -15421,19 +15420,25 @@ ${actionRule}
 ${c.history[0].content}
 
 【🛡️ 结界警告：朋友圈绝对隔离协议 🛡️】
-你现在是在回朋友圈的留言板！
-【最高铁律】：绝对、绝对、绝对不准写心理描写！不准写动作！不要带任何括号或星号！不要输出 <thought> 标签！
-你只需直接说出那句回复的对白！
+你现在是拿着手机在回复朋友圈评论！你们是隔着屏幕的网友状态！
+【最高强制禁令】：
+1. 绝对禁止输出任何 <thought> 标签和内心戏！
+2. 绝对禁止输出任何星号 * 或括号包裹的动作描写！
+你只能输出纯文本的评论回复内容，不能带有任何动作或心理描写符号！违者系统崩溃！
 
 【事件背景】：
 不久前，你在朋友圈发布了这样一条动态：
 “${post.content}”
+
 刚刚，用户（${uName}）在你的这条动态下面评论了你：
 “${myCommentText}”
 
 【任务要求】：
-结合人设，直接回复TA的评论。
-（只输出那句简短的纯文字回复，不要带任何前缀、旁白、心理活动或动作描写！）`;
+请结合你的人设和当时发动态的心情，直接在朋友圈回复TA！
+注意：
+1. 不要写太多多余的旁白或动作描写，重点是输出你回复的纯文字。
+2. 保持朋友圈回复的简短口语化，不要长篇大论。
+3. 你的态度完全取决于你的人设（如果是高冷就回得短，如果是傲娇就怼回去，如果是深情就撩TA）。`;
 
         try {
             const response = await fetch(`${gConfig.apiUrl}/v1/chat/completions`, { 
@@ -15448,33 +15453,76 @@ ${c.history[0].content}
 
             if (!response.ok) return;
             const data = await response.json(); 
-            let replyText = data.choices[0].message.content;
+            // 物理防线：剔除所有标签和所有的星号包裹动作
+            let replyText = data.choices[0].message.content.replace(/<[^>]+>/g, '').replace(/\*[^*]+\*/g, '').trim();
             
-            // 🔪 暴力切除：如果它敢违抗命令输出 <thought> 或 *动作*，直接物理切除
-            replyText = replyText.replace(/<[^>]+>/g, '').replace(/\*[^*]+\*/g, '').replace(/（[^）]+）/g, '').replace(/\([^)]+\)/g, '').trim();
+            // 防空回兜底
             if (!replyText) replyText = "……";
             
             // 构建带 @ 的回复效果
             let finalReplyText = `回复 ${uName}：${replyText}`;
             
+            // 把 AI 的回复推入那条帖子的评论区
             post.comments.push({ id: c.id, name: c.momentName || c.name, text: finalReplyText });
             saveMomentsData();
             
+            // 再次写入核心记忆：告诉 AI 自己回复了什么，形成完整闭环
             c.memory = (c.memory ? c.memory + "\n\n" : "") + `[朋友圈互动]：你回复了 ${uName} 的评论：“${replyText}”。`;
             saveData();
 
+            // 如果当前正好停在朋友圈页面，重绘让新评论冒出来！
             if (document.getElementById('view-main-moments').style.display !== 'none') {
                 mRenderAllFeeds();
             }
+
         } catch (error) {
             console.error("AI 评论回复失败:", error);
         }
     }
 
-    // 交互：删除动态
+    // 交互：删除评论并同步清理记忆
+    function mDeleteComment(postId, cIdx) {
+        if(event) event.stopPropagation();
+        if(!confirm("确定要删除这条评论吗？")) return;
+        
+        let post = momentsData.posts.find(p => p.id === postId);
+        if(!post) return;
+        
+        let deletedComment = post.comments.splice(cIdx, 1)[0];
+        saveMomentsData();
+        
+        // 核心记忆同步删除 (全文检索并替换为空)
+        contacts.forEach(c => {
+            if(c.memory && deletedComment.text) {
+                // 正则转义处理，防止特殊符号报错
+                let safeText = deletedComment.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                let regex = new RegExp(`\\[朋友圈互动[^\\]]*\\]：.*?“${safeText}”。\\n*`, 'g');
+                c.memory = c.memory.replace(regex, '').trim();
+            }
+        });
+        saveData();
+        mRenderAllFeeds();
+    }
+
+    // 交互：删除动态并同步清理记忆
     function mDeletePost(postId) {
         if(event) event.stopPropagation(); 
-        if (!confirm("确定要删除这条朋友圈动态吗？")) return;
+        if (!confirm("确定要删除这条朋友圈动态吗？与其相关的评论和回忆也会被抹除。")) return;
+        
+        let post = momentsData.posts.find(p => p.id === postId);
+        if(post) {
+            // 同步删除核心记忆里关于这条动态的记录
+            contacts.forEach(c => {
+                if(c.memory && post.content) {
+                    let safeText = post.content.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    let regex1 = new RegExp(`\\[朋友圈事件[^\\]]*\\]：.*?“${safeText}”。\\n*`, 'g');
+                    let regex2 = new RegExp(`\\[朋友圈互动[^\\]]*\\]：.*?“${safeText}”。\\n*`, 'g');
+                    c.memory = c.memory.replace(regex1, '').replace(regex2, '').trim();
+                }
+            });
+            saveData();
+        }
+        
         momentsData.posts = momentsData.posts.filter(p => p.id !== postId);
         saveMomentsData();
         
@@ -15488,57 +15536,673 @@ ${c.history[0].content}
         }
     }
 
-    // 交互：删除评论并同步抹除 AI 核心记忆！
-    function mDeleteComment(postId, commentIdx) {
-        if(event) event.stopPropagation(); 
-        if (!confirm("确定要删除这条评论吗？相关角色的记忆也将同步抹除。")) return;
-        
-        let post = momentsData.posts.find(p => p.id === postId);
-        if(!post) return;
-        
-        let deletedComment = post.comments[commentIdx];
-        if(!deletedComment) return;
-
-        // 🧠 记忆扫描与清除引擎：去涉事 AI 的大脑里把这句评论抠掉
-        let cIdsToScrub = new Set();
-        if (post.authorId !== 'me') cIdsToScrub.add(post.authorId); // 如果帖子是 AI 发的，查他
-        if (deletedComment.id !== 'me' && deletedComment.id !== undefined) cIdsToScrub.add(deletedComment.id); // 如果评论是 AI 发的，查他
-        
-        cIdsToScrub.forEach(cid => {
-            let c = contacts.find(x => x.id === cid);
-            if (c && c.memory) {
-                // 用正则安全地把包含这段评论的上下文整行吃掉
-                let safeText = deletedComment.text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
-                let regex = new RegExp(`.*\\[朋友圈互动.*${safeText}.*(\n)?`, 'g');
-                let regex2 = new RegExp(`.*\\[朋友圈事件.*${safeText}.*(\n)?`, 'g');
-                
-                let originalMem = c.memory;
-                c.memory = c.memory.replace(regex, '').replace(regex2, '').trim();
-                // 如果结尾有残留的多个换行，清理一下
-                c.memory = c.memory.replace(/\n{3,}/g, '\n\n');
-            }
-        });
-        saveData(); // 保存清洗后的记忆
-        
-        // 物理删除界面上的评论
-        post.comments.splice(commentIdx, 1);
-        saveMomentsData();
-        mRenderAllFeeds();
+    // 发布弹窗控制
+    function mOpenComposeModal() {
+        document.getElementById('m-compose-modal').classList.add('show');
+        setTimeout(() => { document.getElementById('m-compose-input').focus(); }, 50);
     }
 
-    // ================= 沉浸式引擎：AI 后台围观并评论你的朋友圈 =================
+    function mCloseComposeModal() {
+        document.getElementById('m-compose-modal').classList.remove('show');
+        document.getElementById('m-attachment-menu').classList.remove('show');
+        setTimeout(() => {
+            document.getElementById('m-compose-input').value = '';
+            mRemoveComposeImage();
+        }, 300);
+    }
+
+    function mToggleAttachmentMenu(event) {
+        event.stopPropagation();
+        const menu = document.getElementById('m-attachment-menu');
+        menu.classList.toggle('show');
+    }
+
+    function mSelectTextPhoto() {
+        document.getElementById('m-attachment-menu').classList.remove('show');
+        m_isTextPhotoMode = true;
+        m_composeImageUrl = null; 
+
+        document.getElementById('m-compose-preview-img').src = M_DEFAULT_POST_IMG;
+        document.getElementById('m-compose-preview-badge').style.display = 'block'; 
+        
+        const textInput = document.getElementById('m-compose-text-photo-input');
+        textInput.style.display = 'block';
+        
+        document.getElementById('m-compose-preview-container').style.display = 'block';
+        requestAnimationFrame(() => { setTimeout(() => { textInput.focus(); }, 50); });
+    }
+
+    function mHandleComposeImageSelect(event) {
+        const file = event.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            m_isTextPhotoMode = false;
+            m_composeImageUrl = e.target.result;
+            
+            const textInput = document.getElementById('m-compose-text-photo-input');
+            textInput.style.display = 'none';
+            textInput.value = '';
+            document.getElementById('m-compose-preview-badge').style.display = 'none'; 
+
+            document.getElementById('m-compose-preview-img').src = m_composeImageUrl;
+            document.getElementById('m-compose-preview-container').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function mRemoveComposeImage() {
+        m_isTextPhotoMode = false;
+        m_composeImageUrl = null;
+        
+        const textInput = document.getElementById('m-compose-text-photo-input');
+        textInput.style.display = 'none';
+        textInput.value = '';
+
+        document.getElementById('m-compose-preview-container').style.display = 'none';
+        document.getElementById('m-compose-preview-img').src = '';
+        document.getElementById('m-compose-preview-badge').style.display = 'none';
+    }
+
+    function mSubmitMyPost() {
+        const input = document.getElementById('m-compose-input').value.trim();
+        const textInputVal = document.getElementById('m-compose-text-photo-input').value.trim();
+        const btn = document.getElementById('m-compose-submit-btn');
+        
+        if(!input && !m_composeImageUrl && !(m_isTextPhotoMode && textInputVal)) {
+            alert("说点什么，或者添加个附件吧。");
+            return;
+        }
+
+        if (btn.classList.contains('loading')) return;
+
+        btn.classList.add('loading');
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
+
+        setTimeout(() => {
+            btn.classList.remove('loading');
+            btn.innerHTML = `PUBLISH`;
+
+            let finalSceneDesc = null;
+            if (m_isTextPhotoMode) {
+                finalSceneDesc = textInputVal || "一张留白的照片，隐藏着未说出口的心绪。";
+            }
+
+            let newPost = {
+                id: 'm_post_' + Date.now(),
+                authorId: 'me',
+                authorName: momentsData.meName || gConfig.meName || '我',
+                authorAvatar: momentsData.meAvatar || gConfig.meAvatar || M_DEFAULT_AVATAR,
+                content: input,
+                imgUrl: m_composeImageUrl,
+                isTextPhoto: m_isTextPhotoMode,
+                sceneDesc: finalSceneDesc,
+                timeStr: 'JUST NOW',
+                timestamp: Date.now(), 
+                likes: [],
+                comments: []
+            };
+
+            momentsData.posts.unshift(newPost);
+            saveMomentsData();
+            mRenderAllFeeds();
+            mCloseComposeModal();
+
+            // 🚀 核心新增：触发 AI 后台围观引擎，让 TA 随机给你评论！
+            mTriggerAIAfterUserPost(newPost);
+
+        }, 400); 
+    }
+
+    // ================= 朋友圈联动面板逻辑 (独立联系人版 + 我的主页) =================
+    let m_currentLinkTargetId = null;
+
+    function mOpenLinkModal() {
+        const activePage = document.querySelector('.m-page.active');
+        if (!activePage) return;
+        
+        const pageId = activePage.id.replace('m-page-', '');
+        if (pageId === 'square') {
+            return alert("请先在左侧点击切换到【你的主页】或某个【AI】的主页，再设置专属的互动圈子！");
+        }
+
+        m_currentLinkTargetId = pageId;
+        const list = document.getElementById('m-link-list');
+        list.innerHTML = '';
+
+        if (pageId === 'me') {
+            if (!momentsData.meLinkedContacts) momentsData.meLinkedContacts = [];
+            contacts.forEach(otherC => {
+                const isChecked = momentsData.meLinkedContacts.includes(otherC.id) ? 'checked' : '';
+                let avData = otherC.chatAvatar || otherC.avatar;
+                list.innerHTML += `
+                    <label style="display:flex; justify-content:space-between; align-items:center; padding: 12px; background: rgba(0,0,0,0.03); border-radius: 12px; cursor: pointer;">
+                        <div style="display:flex; align-items:center; gap: 10px;">
+                            <div class="c-avatar-wrap" style="width: 32px; height: 32px; border-radius: 8px; margin-right: 0; box-shadow: none; border: none; padding: ${avData ? '0' : '4px'};">${renderAvatarHTML(avData, 'bot')}</div>
+                            <span style="font-size: 14px; font-weight: 700; color: var(--c-black);">${otherC.name}</span>
+                        </div>
+                        <input type="checkbox" class="btn-switch m-link-cb" value="${otherC.id}" ${isChecked}>
+                    </label>
+                `;
+            });
+        } else {
+            const c = contacts.find(x => x.id === pageId);
+            if (!c) return;
+            if (!c.linkedContacts) c.linkedContacts = [];
+
+            contacts.forEach(otherC => {
+                if (otherC.id === c.id) return;
+                const isChecked = c.linkedContacts.includes(otherC.id) ? 'checked' : '';
+                let avData = otherC.chatAvatar || otherC.avatar;
+                list.innerHTML += `
+                    <label style="display:flex; justify-content:space-between; align-items:center; padding: 12px; background: rgba(0,0,0,0.03); border-radius: 12px; cursor: pointer;">
+                        <div style="display:flex; align-items:center; gap: 10px;">
+                            <div class="c-avatar-wrap" style="width: 32px; height: 32px; border-radius: 8px; margin-right: 0; box-shadow: none; border: none; padding: ${avData ? '0' : '4px'};">${renderAvatarHTML(avData, 'bot')}</div>
+                            <span style="font-size: 14px; font-weight: 700; color: var(--c-black);">${otherC.name}</span>
+                        </div>
+                        <input type="checkbox" class="btn-switch m-link-cb" value="${otherC.id}" ${isChecked}>
+                    </label>
+                `;
+            });
+        }
+
+        if (contacts.length === 0 || (pageId !== 'me' && contacts.length === 1)) {
+            list.innerHTML += '<div style="text-align:center; font-size:11px; color:#999; margin-top: 10px;">系统中还没有其他角色，无法添加联动。</div>';
+        }
+
+        document.getElementById('m-link-sheet').classList.add('active');
+    }
+
+    function mCloseLinkModal() {
+        document.getElementById('m-link-sheet').classList.remove('active');
+        m_currentLinkTargetId = null;
+    }
+
+    function mSaveLinkModal() {
+        if (!m_currentLinkTargetId) return mCloseLinkModal();
+        const cbs = document.querySelectorAll('.m-link-cb:checked');
+        const ids = Array.from(cbs).map(cb => cb.value);
+
+        if (m_currentLinkTargetId === 'me') {
+            momentsData.meLinkedContacts = ids;
+            saveMomentsData();
+            alert(`已为您保存专属互动圈子！\n您发动态时，只有勾选的 AI 会来围观评论。`);
+        } else {
+            const c = contacts.find(x => x.id === m_currentLinkTargetId);
+            if (c) {
+                c.linkedContacts = ids;
+                saveData();
+                alert(`已为【${c.name}】保存专属互动圈子！\nTA发动态时将只与勾选的人联动。`);
+            }
+        }
+        mCloseLinkModal();
+    }
+
+    // ================= 真正调取大模型发朋友圈 =================
+    async function mTriggerAIPost(event, targetUid) {
+        event.stopPropagation(); 
+        const btn = event.currentTarget;
+        if (btn.classList.contains('loading')) return;
+
+        const c = contacts.find(x => x.id === targetUid);
+        if(!c) return;
+        
+        if(!gConfig.apiUrl || !gConfig.apiKey) {
+            return alert('需配置API！请在桌面进入【Settings】填写您的接口和密钥。');
+        }
+
+        btn.classList.add('loading');
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
+
+        // 构建联动好友名单，告诉AI谁可以来互动
+         // 构建独立联动好友名单 (只使用该角色的 c.linkedContacts)
+        let linkedInfoList = [];
+        if(c.linkedContacts && c.linkedContacts.length > 0) {
+            c.linkedContacts.forEach(linkId => {
+                let lc = contacts.find(x => x.id === linkId);
+                if(lc) linkedInfoList.push(`{ id: "${lc.id}", name: "${lc.momentName || lc.name}", relation: "存在于你通讯录里的朋友" }`);
+            });
+        }
+        
+        let uName = gConfig.meName || '我';
+        let linkedInfoStr = linkedInfoList.length > 0 
+            ? "【你当前的朋友圈互动圈子名单】：\n" + linkedInfoList.join('\n') + "\n(你可以从这些人里挑出几个，模拟他们对你这条朋友圈的点赞和评论，你们可以互相调侃互怼！)"
+            : "当前没有别人与你联动，你只需发一条个人动态即可。";
+
+        // ⌚ 核心时间感知引擎
+        const now = new Date();
+        const h = now.getHours();
+        const timeDesc = h >= 0 && h < 5 ? "凌晨/深夜" : h >= 5 && h < 9 ? "清晨/早晨" : h >= 9 && h < 12 ? "上午" : h >= 12 && h < 14 ? "中午" : h >= 14 && h < 18 ? "下午" : h >= 18 && h < 20 ? "傍晚/黄昏" : "夜晚";
+
+        let sysPrompt = `你是一个拥有独立人设的真实人物，正在使用手机发一条朋友圈动态。
+【你的人设指令】：
+${c.history[0].content}
+
+【核心记忆】：
+${c.memory || '暂无。'}
+
+【🛡️ 结界警告：朋友圈绝对隔离协议 🛡️】
+你现在是拿着手机在发朋友圈！绝对不要出现当面聊天的动作描写（比如 *把你按在墙上*、*轻抚你的脸* 等），你们是隔着屏幕的网友状态！
+如果有动作描写，【只能】是看手机、打字、自拍、或者你周围环境的描写！绝对禁止越界！
+
+【⌚ 现实时间感知】：
+现在你所处的真实世界时间是 ${now.toLocaleString()}，属于【${timeDesc}】。请务必结合时间点构思动态！
+
+${linkedInfoStr}
+
+【🚨 最高绝对警告】：
+用户（${uName}，ID: "me"）是拥有独立意志的真人！你【绝对、绝对、绝对禁止】在评论区替用户（${uName}）伪造评论！你只能模拟名单里出现的其他人进行评论！
+
+【任务要求】：
+1. 发一条符合你口吻的朋友圈动态。
+2. 决定这条动态是否带有一张“虚拟照片”（通过 sceneDesc 描写）。
+3. 如果上方提供了圈子名单，请在 comments 中模拟他们对你的生动回复（你也可以作为博主回复他们）。绝对不要模拟用户的回复！
+
+【格式要求：必须且只能输出严格合法的 JSON 对象】：
+{
+  "content": "朋友圈正文",
+  "isTextPhoto": true或false,
+  "sceneDesc": "如果isTextPhoto为true，详细描写画面；如果是false，填null",
+  "likes": ["点赞者的id列表（只能从上方列表选）"],
+  "comments": [
+    { "authorId": "评论者的id（只能从上方列表选，或是你的id '${c.id}'）", "authorName": "评论者的网名", "text": "评论内容" }
+  ]
+}`;
+
+        try {
+            const response = await fetch(`${gConfig.apiUrl}/v1/chat/completions`, { 
+                method: 'POST', 
+                headers: { 'Authorization': `Bearer ${gConfig.apiKey}`, 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ 
+                    model: gConfig.model, 
+                    messages: [{ role: 'system', content: sysPrompt }], 
+                    temperature: 0.8 
+                }) 
+            });
+
+            if (!response.ok) throw new Error("API 请求失败");
+            const data = await response.json(); 
+            let rawContent = data.choices[0].message.content.trim();
+            
+            rawContent = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
+            let startIdx = rawContent.indexOf('{'); let endIdx = rawContent.lastIndexOf('}');
+            if(startIdx !== -1 && endIdx !== -1) {
+                rawContent = rawContent.substring(startIdx, endIdx + 1);
+            }
+            
+            const aiPostData = JSON.parse(rawContent);
+
+            // 过滤掉 AI 脑抽替我(me)生成的点赞和评论
+            let cleanLikes = Array.isArray(aiPostData.likes) ? aiPostData.likes.filter(id => id !== 'me') : [];
+            let cleanComments = Array.isArray(aiPostData.comments) ? aiPostData.comments.filter(cm => cm.authorId !== 'me').map(cm => ({
+                id: cm.authorId,
+                name: cm.authorName || '匿名',
+                text: cm.text || ''
+            })) : [];
+
+            // 推入帖子数组
+            momentsData.posts.unshift({
+                id: 'm_post_' + Date.now(),
+                authorId: c.id,
+                authorName: c.momentName || c.name,
+                authorAvatar: c.chatAvatar || c.avatar || M_DEFAULT_AVATAR,
+                content: aiPostData.content || "...",
+                imgUrl: null,
+                isTextPhoto: aiPostData.isTextPhoto === true,
+                sceneDesc: aiPostData.sceneDesc || null,
+                timeStr: 'JUST NOW',
+                timestamp: Date.now(),
+                likes: cleanLikes,
+                comments: cleanComments
+            });
+
+            // 🚀 核心：将 AI 发朋友圈的事件写入核心记忆！
+            c.memory = (c.memory ? c.memory + "\n\n" : "") + `[朋友圈事件 - ${new Date().toLocaleString()}]：你刚刚发布了一条朋友圈动态：“${aiPostData.content}”。`;
+            saveData();
+            saveMomentsData();
+            mRenderAllFeeds();
+
+        } catch (error) {
+            console.error("朋友圈生成失败:", error);
+            alert("AI 生成动态失败，可能是大模型未输出合法的 JSON 格式。请再试一次或更换更聪明的模型。\n报错信息：" + error.message);
+        } finally {
+            btn.classList.remove('loading');
+            btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"></path></svg>`;
+        }
+    }
+
+    // 书签弹窗
+    function mOpenBookmarkModal(wrapperElement) {
+        const postElement = wrapperElement.closest('.m-post');
+        const imgSrc = wrapperElement.querySelector('.m-post-image').src;
+        const content = postElement.querySelector('.m-post-content').innerText;
+        const name = postElement.querySelector('.m-post-name').innerText;
+        const time = postElement.querySelector('.m-post-time').innerText;
+        
+        const isTextPhoto = wrapperElement.getAttribute('data-is-text-photo') === 'true';
+        const sceneDesc = wrapperElement.getAttribute('data-scene-desc') || "";
+
+        document.getElementById('m-bm-img').src = imgSrc;
+        
+        const imgWrapper = document.getElementById('m-bm-img-wrapper');
+        const hintElem = imgWrapper.querySelector('.m-bookmark-img-hint');
+        
+        if (isTextPhoto) {
+            document.getElementById('m-bm-scene-desc').innerText = sceneDesc;
+            imgWrapper.classList.add('clickable');
+            imgWrapper.setAttribute('onclick', 'this.classList.toggle("show-desc")');
+            hintElem.innerText = "TAP TO REVEAL";
+            hintElem.style.display = 'block';
+        } else {
+            document.getElementById('m-bm-scene-desc').innerText = '';
+            imgWrapper.classList.remove('clickable');
+            imgWrapper.removeAttribute('onclick');
+            hintElem.style.display = 'none';
+        }
+        
+        document.getElementById('m-bm-text').innerText = content;
+        document.getElementById('m-bm-name').innerText = name;
+        document.getElementById('m-bm-time').innerText = time;
+
+        imgWrapper.classList.remove('show-desc');
+        document.getElementById('m-bookmark-modal').classList.add('show');
+    }
+
+    function mCloseBookmarkModal() {
+        document.getElementById('m-bookmark-modal').classList.remove('show');
+    }
+
+    // 雪花背景
+    let snowCanvas, snowCtx, snowWidth, snowHeight, maxSnowHeight, flakes = [];
+    function initSnow() {
+        snowCanvas = document.getElementById('m-snowCanvas');
+        if(!snowCanvas) return;
+        snowCtx = snowCanvas.getContext('2d');
+        const parent = document.getElementById('view-main-moments');
+        snowWidth = snowCanvas.width = parent.clientWidth;
+        snowHeight = snowCanvas.height = parent.clientHeight;
+        maxSnowHeight = snowHeight * 0.45; 
+        flakes = [];
+        for (let i = 0; i < 20; i++) {
+            flakes.push({
+                x: Math.random() * snowWidth,
+                y: Math.random() * maxSnowHeight,
+                r: Math.random() * 1.5 + 0.5, 
+                vx: Math.random() * 0.6 + 0.2, 
+                vy: Math.random() * 0.6 + 0.4, 
+                alpha: Math.random() * 0.5 + 0.3 
+            });
+        }
+        drawSnow();
+    }
+
+    function drawSnow() {
+        if(!snowCtx) return;
+        snowCtx.clearRect(0, 0, snowWidth, snowHeight);
+        for (let i = 0; i < flakes.length; i++) {
+            let f = flakes[i];
+            let fadeRatio = Math.max(0, 1 - (f.y / maxSnowHeight));
+            let currentAlpha = f.alpha * fadeRatio;
+            snowCtx.beginPath();
+            snowCtx.fillStyle = `rgba(255, 255, 255, ${currentAlpha})`;
+            snowCtx.shadowBlur = 5;
+            snowCtx.shadowColor = `rgba(0, 0, 0, ${currentAlpha * 0.2})`; 
+            snowCtx.arc(f.x, f.y, f.r, 0, Math.PI * 2, true);
+            snowCtx.fill();
+            snowCtx.shadowBlur = 0;
+        }
+        for (let i = 0; i < flakes.length; i++) {
+            let f = flakes[i];
+            f.x += f.vx;
+            f.y += f.vy;
+            if (f.x > snowWidth || f.y > maxSnowHeight) {
+                if (Math.random() > 0.5) { f.x = -5; f.y = Math.random() * maxSnowHeight * 0.5; } 
+                else { f.x = Math.random() * snowWidth; f.y = -5; }
+            }
+        }
+        if(document.getElementById('view-main-moments').style.display !== 'none') {
+            requestAnimationFrame(drawSnow);
+        }
+    }
+
+    window.addEventListener('resize', () => {
+        if(document.getElementById('view-main-moments').style.display !== 'none') initSnow();
+    });
+    // ================= 朋友圈角色资料与 AI 生成引擎 =================
+    let m_currentEditProfileId = null;
+
+    // 处理“我”的朋友圈独立头像上传
+    function mHandleMeAvatarUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            momentsData.meAvatar = e.target.result;
+            saveMomentsData();
+            renderMomentsUI();
+            
+            // 上传后保持在“我的主页”
+            const activeAvatars = document.querySelectorAll('.m-avatar-btn');
+            activeAvatars.forEach(btn => {
+                if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(`mSwitchPage('me'`)) {
+                    mSwitchPage('me', btn);
+                }
+            });
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function mOpenProfileEditModal(cid) {
+        m_currentEditProfileId = cid;
+        
+        if (cid === 'me') {
+            // 如果点的是“我”，隐藏 AI 按钮和历史列表，纯手动编辑
+            document.getElementById('m-profile-modal-title').innerText = "编辑我的主页资料";
+            document.getElementById('m-edit-name').value = momentsData.meName || gConfig.meName || '';
+            document.getElementById('m-edit-sign').value = momentsData.meSign || '记录自己的生活碎片。';
+            
+            document.getElementById('m-btn-ai-profile').style.display = 'none';
+            document.getElementById('m-profile-history-section').style.display = 'none';
+        } else {
+            // 如果点的是“AI”，显示完整的历史马甲与生成功能
+            const c = contacts.find(x => x.id === cid);
+            if(!c) return;
+            
+            document.getElementById('m-profile-modal-title').innerText = "身份马甲档案库";
+            document.getElementById('m-edit-name').value = c.momentName || c.name || '';
+            document.getElementById('m-edit-sign').value = c.momentSign || '';
+            
+            document.getElementById('m-btn-ai-profile').style.display = 'block';
+            document.getElementById('m-profile-history-section').style.display = 'block';
+            mRenderProfileHistory(c); 
+        }
+        
+        document.getElementById('m-profile-edit-modal').classList.add('active');
+    }
+
+    function mCloseProfileEditModal() {
+        document.getElementById('m-profile-edit-modal').classList.remove('active');
+        m_currentEditProfileId = null;
+    }
+
+    // 渲染角色的马甲历史
+    function mRenderProfileHistory(c) {
+        const list = document.getElementById('m-profile-history-list');
+        list.innerHTML = '';
+        if (!c.profileHistory || c.profileHistory.length === 0) {
+            list.innerHTML = '<div style="text-align:center; font-size:10px; color:#999; padding: 10px 0;">暂无历史马甲，请在下方保存或让 AI 灵感生成。</div>';
+            return;
+        }
+
+        c.profileHistory.forEach((p, idx) => {
+            const item = document.createElement('div');
+            item.style.cssText = "background: rgba(0,0,0,0.03); padding: 12px 14px; border-radius: 12px; border: 0.5px solid rgba(0,0,0,0.04); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s;";
+            item.onmousedown = () => item.style.transform = 'scale(0.98)';
+            item.onmouseup = () => item.style.transform = 'scale(1)';
+            
+            let safeName = p.name.replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+            let safeSign = p.sign.replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+
+            item.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:4px; flex:1; overflow: hidden;" onclick="mApplyProfileHistory('${safeName}', '${safeSign}')">
+                    <div style="font-weight: 800; font-size: 14px; color: var(--c-black); letter-spacing: 0.5px;">${p.name}</div>
+                    <div style="font-size: 11px; color: var(--c-gray-dark); font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 95%;">${p.sign}</div>
+                </div>
+                <div style="color: #FF3B30; padding: 5px; cursor: pointer; flex-shrink: 0;" onclick="mDeleteProfileHistory('${c.id}', ${idx}, event)" title="删除此马甲">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </div>
+            `;
+            list.appendChild(item);
+        });
+    }
+
+    function mApplyProfileHistory(name, sign) {
+        document.getElementById('m-edit-name').value = name;
+        document.getElementById('m-edit-sign').value = sign;
+    }
+
+    function mDeleteProfileHistory(cid, idx, e) {
+        e.stopPropagation();
+        const c = contacts.find(x => x.id === cid);
+        if(c && c.profileHistory) {
+            c.profileHistory.splice(idx, 1);
+            saveData();
+            mRenderProfileHistory(c);
+        }
+    }
+
+    function mSaveProfileEdit() {
+        if(!m_currentEditProfileId) return;
+        
+        const newName = document.getElementById('m-edit-name').value.trim();
+        const newSign = document.getElementById('m-edit-sign').value.trim();
+
+        if (m_currentEditProfileId === 'me') {
+            // 如果是保存我的主页信息
+            momentsData.meName = newName;
+            momentsData.meSign = newSign;
+            saveMomentsData();
+            renderMomentsUI();
+            
+            const activeAvatars = document.querySelectorAll('.m-avatar-btn');
+            activeAvatars.forEach(btn => {
+                if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(`mSwitchPage('me'`)) {
+                    mSwitchPage('me', btn);
+                }
+            });
+        } else {
+            // 如果是保存 AI 的主页信息
+            const c = contacts.find(x => x.id === m_currentEditProfileId);
+            if(c) {
+                c.momentName = newName;
+                c.momentSign = newSign;
+                
+                if (!c.profileHistory) c.profileHistory = [];
+                if (newName || newSign) {
+                    const exists = c.profileHistory.find(p => p.name === newName && p.sign === newSign);
+                    if (!exists) {
+                        c.profileHistory.unshift({ name: newName, sign: newSign });
+                    }
+                }
+                
+                saveData(); 
+                renderMomentsUI();
+                
+                const activeAvatars = document.querySelectorAll('.m-avatar-btn');
+                activeAvatars.forEach(btn => {
+                    if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(`mSwitchPage('${c.id}'`)) {
+                        mSwitchPage(c.id, btn);
+                    }
+                });
+            }
+        }
+        mCloseProfileEditModal();
+    }
+
+    // 调用大模型提取人设并自动取名写签名
+    async function mGenerateProfileByAI() {
+        if(!m_currentEditProfileId || m_currentEditProfileId === 'me') return; // “我”的页面不让点击
+        const c = contacts.find(x => x.id === m_currentEditProfileId);
+        if(!c) return;
+        
+        if(!gConfig.apiUrl || !gConfig.apiKey) {
+            return alert('需配置API！请在桌面进入【Settings】填写您的接口和密钥。');
+        }
+
+        const btn = document.getElementById('m-btn-ai-profile');
+        const oldText = btn.innerText;
+        btn.innerText = "✧ 正在感知角色灵魂...";
+        btn.style.pointerEvents = "none";
+        btn.style.opacity = "0.7";
+
+        let sysPrompt = `你是一个拥有独立人设的真实人物。
+【你的人设背景】：
+${c.history[0].content}
+
+【任务要求】：
+请根据你的性格、背景和说话习惯，为自己起一个在社交媒体（朋友圈）上的网名，以及一句简短的个性签名。
+- 如果你是高冷、内敛的角色，签名可以极其简短、留白或者标点符号。
+- 如果你是腹黑、病娇，签名可以带有一丝隐晦的占有欲或危险气息。
+- 如果你是活泼的角色，可以加入合适的 Emoji。
+
+【最高警告：必须且只能输出严格合法的 JSON 对象，不要包含任何 Markdown 标记和代码块注释！】
+格式严格如下：
+{
+  "name": "你的网名",
+  "sign": "你的个性签名"
+}`;
+
+        try {
+            const response = await fetch(`${gConfig.apiUrl}/v1/chat/completions`, { 
+                method: 'POST', 
+                headers: { 'Authorization': `Bearer ${gConfig.apiKey}`, 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ 
+                    model: gConfig.model, 
+                    messages: [{ role: 'system', content: sysPrompt }], 
+                    temperature: 0.9 
+                }) 
+            });
+
+            if (!response.ok) throw new Error("API 请求失败");
+            const data = await response.json(); 
+            let rawContent = data.choices[0].message.content.trim();
+            
+            rawContent = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
+            let startIdx = rawContent.indexOf('{'); let endIdx = rawContent.lastIndexOf('}');
+            if(startIdx !== -1 && endIdx !== -1) {
+                rawContent = rawContent.substring(startIdx, endIdx + 1);
+            }
+            
+            const aiData = JSON.parse(rawContent);
+            
+            if(aiData.name) document.getElementById('m-edit-name').value = aiData.name;
+            if(aiData.sign) document.getElementById('m-edit-sign').value = aiData.sign;
+
+        } catch(e) {
+            console.error("AI 提取签名失败:", e);
+            alert("AI 生成失败，可能是大模型未输出合法的 JSON 格式。请重试。\n报错信息：" + e.message);
+        } finally {
+            btn.innerText = oldText;
+            btn.style.pointerEvents = "auto";
+            btn.style.opacity = "1";
+        }
+    }
+        // ================= 沉浸式引擎：AI 后台围观并评论你的朋友圈 =================
     function mTriggerAIAfterUserPost(post) {
         if(!gConfig.apiUrl || !gConfig.apiKey) return;
         if(!contacts || contacts.length === 0) return;
 
+        // 获取我允许联动的联系人名单（如果没有设置专属联动，默认随机抓取所有 AI）
         let linkedIds = momentsData.meLinkedContacts || [];
         let availableAIs = contacts.filter(c => linkedIds.includes(c.id) || linkedIds.length === 0);
         if(availableAIs.length === 0) return;
 
+        // 随机选 1 到 2 个 AI 来给你评论，不会显得太假
         let commentersCount = Math.floor(Math.random() * 2) + 1;
         let shuffledAIs = availableAIs.sort(() => 0.5 - Math.random()).slice(0, commentersCount);
 
         shuffledAIs.forEach(c => {
+            // 沉浸式时间物理引擎：随机在 8秒 到 30秒 之间回复，模拟对方正好刷到这条朋友圈的错落感
             let delay = Math.floor(Math.random() * 22000) + 8000;
             setTimeout(() => { mGenerateAICommentForUserPost(c, post); }, delay);
         });
@@ -15555,9 +16219,11 @@ ${c.history[0].content}
 ${c.memory || '暂无。'}
 
 【🛡️ 结界警告：朋友圈绝对隔离协议 🛡️】
-你现在是在评论别人的朋友圈！
-【最高铁律】：绝对、绝对、绝对不准写心理描写！不准写动作！不要带任何括号或星号！不要输出 <thought> 标签！
-你只需直接说出那句简短的评论留言！
+你现在是拿着手机在刷朋友圈！你们是隔着屏幕的网友！
+【最高强制禁令】：
+1. 绝对禁止输出任何 <thought> 标签和内心戏！
+2. 绝对禁止输出任何星号 * 或括号包裹的动作描写！
+你只能输出纯文本的评论内容，不能带有任何动作或心理描写符号！违者系统崩溃！
 
 【事件背景】：
 你的特别关注对象（${uName}）刚刚发布了一条朋友圈动态：
@@ -15565,8 +16231,10 @@ ${c.memory || '暂无。'}
 ${post.sceneDesc ? `(TA还附带了一张照片，画面内容是：${post.sceneDesc})` : ''}
 
 【任务要求】：
-请结合你的人设，直接在TA的朋友圈下面留一句简短的评论。
-（只输出那句简短的纯文字留言，不要带任何前缀、旁白、心理活动或动作描写！）`;
+请结合你的人设和你们的关系，直接在TA的朋友圈下面留一句简短的评论。
+1. 不要写多余的动作描写或旁白，只输出你评论的纯文字。
+2. 保持口语化，不要长篇大论。
+3. 态度取决于你的人设（例如：高冷、傲娇、深情、调侃、秒回等）。`;
 
         try {
             const response = await fetch(`${gConfig.apiUrl}/v1/chat/completions`, { 
@@ -15581,18 +16249,19 @@ ${post.sceneDesc ? `(TA还附带了一张照片，画面内容是：${post.scene
 
             if (!response.ok) return;
             const data = await response.json(); 
-            let replyText = data.choices[0].message.content;
-            
-            // 🔪 暴力切除：如果它敢违抗命令输出 <thought> 或 *动作*，直接物理切除
-            replyText = replyText.replace(/<[^>]+>/g, '').replace(/\*[^*]+\*/g, '').replace(/（[^）]+）/g, '').replace(/\([^)]+\)/g, '').trim();
+            // 物理防线：剔除所有标签和所有的星号包裹动作
+            let replyText = data.choices[0].message.content.replace(/<[^>]+>/g, '').replace(/\*[^*]+\*/g, '').trim();
             if (!replyText) replyText = "……";
             
+            // 将评论推入这条动态的评论区
             post.comments.push({ id: c.id, name: c.momentName || c.name, text: replyText });
             saveMomentsData();
             
+            // 🚀 核心：将 AI 给你的评论写入TA的大脑记忆，实现时空闭环！
             c.memory = (c.memory ? c.memory + "\n\n" : "") + `[朋友圈事件 - ${new Date().toLocaleString()}]：用户(${uName}) 发了一条动态：“${post.content}”。你在下面主动评论了TA：“${replyText}”。`;
             saveData();
 
+            // 如果当前正好停在朋友圈页面，静默重绘让新评论冒出来！
             if (document.getElementById('view-main-moments').style.display !== 'none') {
                 mRenderAllFeeds();
             }
