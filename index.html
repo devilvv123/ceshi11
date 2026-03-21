@@ -715,6 +715,15 @@
         /* 记忆系统暗黑定制 */
         #cs-memory { background: var(--c-black); color: #FFF; border-color: var(--c-black); }
         #cs-memory::placeholder { color: rgba(255,255,255,0.4); }
+        
+        /* 心理活动弹窗的基础样式（可通过气泡CSS覆盖 .custom-thought-box） */
+        .custom-thought-box {
+            font-size: 15px; line-height: 1.6; color: var(--c-black); 
+            padding: 15px; font-style: italic; min-height: 50px; 
+            font-weight: 500; text-align: left; background: rgba(0,0,0,0.03); 
+            border-radius: 16px; margin-bottom: 10px;
+        }
+
                 /* 齿轮平滑缓慢旋转动画 */
         @keyframes gearSpin {
             0% { transform: rotate(0deg); }
@@ -4564,7 +4573,8 @@
                 </div>
             </div>
             
-            <div id="thought-content" style="font-size: 15px; line-height: 1.6; color: var(--c-black); padding: 15px; font-style: italic; min-height: 50px; font-weight: 500; text-align: left; background: rgba(0,0,0,0.03); border-radius: 16px; margin-bottom: 10px;">...</div>
+            <!-- 加入了 custom-thought-box 类名，删除了内联样式，方便通过专属气泡CSS修改 -->
+            <div id="thought-content" class="custom-thought-box">...</div>
             
             <div class="modal-btns">
                 <div class="m-btn m-btn-save" style="width:100%; background: #FFB6C1; color: var(--c-black); box-shadow: 0 8px 20px rgba(255,182,193,0.3);" onclick="document.getElementById('thought-modal').classList.remove('active')">关闭</div>
@@ -4953,7 +4963,7 @@
                                 <label>专属气泡 CSS</label>
                                 <span class="cs-text-btn" onclick="openPresetSelector()">使用工坊预设</span>
                             </div>
-                            <textarea class="cs-textarea" id="cs-me-bubble-css" style="height: 70px;" placeholder="支持粘贴完整的聊天主题 CSS（如 .bubble-bot { ... }）" onchange="saveGlobalFromCS()"></textarea>
+                            <textarea class="cs-textarea" id="cs-me-bubble-css" style="height: 70px;" placeholder="支持粘贴完整的聊天主题 CSS（如 .bubble-bot { ... } 或 .custom-thought-box { ... } 美化心理活动）" onchange="saveGlobalFromCS()"></textarea>
                         </div>
                     </div>
                 </div>
